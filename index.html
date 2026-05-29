@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>뚝딱! 용액 탐험대 🧪</title>
+    <link href="https://fonts.googleapis.com/css2?family=Gamja+Flower&family=Nanum+Gothic:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #4A90E2;
+            --secondary-color: #FFF9E6;
+            --accent-color: #FF6B6B;
+            --text-color: #333;
+        }
+
+        body {
+            font-family: 'Gamja Flower', 'Nanum Gothic', sans-serif;
+            background-color: #EEFFFA;
+            background-image: radial-gradient(#CCF5E6 2px, transparent 2px);
+            background-size: 20px 20px;
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: white;
+            border-4px: ridge var(--primary-color);
+            border: 4px solid var(--primary-color);
+            border-radius: 30px;
+            padding: 30px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0px 10px 0px rgba(74, 144, 226, 0.3);
+            text-align: center;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            font-size: 2.5rem;
+            margin-top: 0;
+            text-shadow: 2px 2px 0px #FFD257;
+        }
+
+        .intro {
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            background-color: var(--secondary-color);
+            padding: 10px;
+            border-radius: 15px;
+            border: 2px dashed #FFD257;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        input[type="text"] {
+            width: 80%;
+            padding: 12px 20px;
+            font-size: 1.3rem;
+            font-family: 'Gamja Flower', sans-serif;
+            border: 3px solid #DDD;
+            border-radius: 20px;
+            outline: none;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 8px rgba(74, 144, 226, 0.5);
+        }
+
+        button {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.4rem;
+            font-family: 'Gamja Flower', sans-serif;
+            border-radius: 20px;
+            cursor: pointer;
+            box-shadow: 0 5px 0 #D14949;
+            transition: all 0.1s;
+        }
+
+        button:active {
+            transform: translateY(4px);
+            box-shadow: 0 1px 0 #D14949;
+        }
+
+        .loading {
+            display: none;
+            font-size: 1.5rem;
+            color: var(--primary-color);
+            margin-top: 20px;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        #result-box {
+            display: none;
+            margin-top: 25px;
+            text-align: left;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-card {
+            background-color: #F3F8FF;
+            border: 2px solid #BCD6FF;
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+
+        .result-title {
+            font-size: 1.5rem;
+            color: var(--primary-color);
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+
+        .result-content {
+            font-size: 1.2rem;
+            line-height: 1.6;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 10px;
+            color: white;
+            font-size: 1rem;
+            margin-right: 8px;
+        }
+        .bg-solvent { background-color: #4A90E2; }
+        .bg-solute { background-color: #10B981; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🧪 뚝딱! 용액 탐험대</h1>
+    <p class="intro">우리 주변에서 볼 수 있는 신기한 용액을 입력해봐! 용매와 용질, 그리고 어디에 쓰이는지 알려줄게! ✨</p>
+    
+    <div class="input-group">
+        <input type="text" id="solution-input" placeholder="예: 사이다, 식초, 손소독제..." onkeypress="if(event.key==='Enter') searchSolution()">
+    </div>
+    <button onclick="searchSolution()">탐험 시작! 🔍</button>
+
+    <div class="loading" id="loading-text">🧪 용액을 분석하는 중... 잠시만 기다려줘!</div>
+
+    <div id="result-box">
+        <div class="result-card">
+            <div class="result-title">💧 무엇으로 이루어져 있을까?</div>
+            <div class="result-content">
+                <p><span class="badge bg-solvent">용매</span> <strong>녹이는 물질:</strong> <span id="solvent-text"></span></p>
+                <p><span class="badge bg-solute">용질</span> <strong>녹는 물질:</strong> <span id="solute-text"></span></p>
+            </div>
+        </div>
+
+        <div class="result-card">
+            <div class="result-title">🏠 일상생활 속 쓰임새</div>
+            <div class="result-content" id="uses-text">
+                </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ⚠️ 중요: 여기에 발급받은 Gemini API Key를 입력하세요!
+    const API_KEY = "AIzaSyAX6qczsL0lyo9_OLSQl_n9oYHmLEoqSYE"; 
+
+    async function searchSolution() {
+        const input = document.getElementById('solution-input').value.trim();
+        if (!input) {
+            alert('궁금한 용액의 이름을 입력해줘! 😉');
+            return;
+        }
+
+        const loadingText = document.getElementById('loading-text');
+        const resultBox = document.getElementById('result-box');
+        
+        loadingText.style.display = 'block';
+        resultBox.style.display = 'none';
+
+        // 초등학생 눈높이에 맞는 JSON 형태의 답변을 요구하는 프롬프트
+        const prompt = `초등학교 5학년 과학 '용해와 용액' 단원 수준에 맞게 답변해줘. 
+        사용자가 입력한 용액: "${input}"
+        
+        만약 입력한 것이 과학적 정의상 '용액(균일 혼합물)'이 아니라면, 초등학생에게 친절하게 용액이 아닌 이유를 설명하는 json을 보내줘.
+        만약 용액이 맞다면, 다음 규칙을 지켜서 JSON 형식으로만 응답해줘:
+        {
+          "isSolution": true,
+          "solvent": "용매 이름 (예: 물)",
+          "solute": "용질 이름 (예: 이산화탄소, 설탕 등)",
+          "uses": [
+            "일상생활 쓰임새 1 (초등학생이 이해하기 쉬운 문장으로)",
+            "일상생활 쓰임새 2",
+            "일상생활 쓰임새 3"
+          ]
+        }
+        
+        만약 용액이 아니라면(예: 흙탕물, 우유 등은 균일혼합물이 아님):
+        {
+          "isSolution": false,
+          "reason": "왜 용액이 아닌지 초등학생 눈높이에서 다정하게 설명하는 문장"
+        }
+        노트: 마크다운 기호 없이 순수 JSON만 반환해줘.`;
+
+        try {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }]
+                })
+            });
+
+            const data = await response.json();
+            let rawText = data.candidates[0].content.parts[0].text;
+            
+            // 혹시 모를 마크다운 래퍼 지우기
+            rawText = rawText.replace(/```json|```/g, '').trim();
+            const result = JSON.parse(rawText);
+
+            if (result.isSolution) {
+                document.getElementById('solvent-text').innerText = result.solvent;
+                document.getElementById('solute-text').innerText = result.solute;
+                
+                let usesHtml = '<ul>';
+                result.uses.forEach(use => {
+                    usesHtml += `<li>${use}</li>`;
+                });
+                usesHtml += '</ul>';
+                document.getElementById('uses-text').innerHTML = usesHtml;
+            } else {
+                // 용액이 아닐 경우 예외 처리
+                document.getElementById('solvent-text').innerText = "용액이 아니에요 🙅";
+                document.getElementById('solute-text').innerText = "용액이 아니에요 🙅";
+                document.getElementById('uses-text').innerHTML = `<p style="color: var(--accent-color); font-weight:bold;">${result.reason}</p>`;
+            }
+
+            resultBox.style.display = 'block';
+        } catch (error) {
+            console.error(error);
+            alert('앗! 에러가 발생했어. API 키를 확인하거나 다시 시도해줘! 😢');
+        } finally {
+            loadingText.style.display = 'none';
+        }
+    }
+</script>
+
+</body>
+</html>
