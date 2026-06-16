@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>제빵일기 🍞 (Google Sheets 연동)</title>
+    <title>제빵일기 🍞 (Google Sheets 연동 완료)</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
@@ -19,8 +19,8 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // ⚠️ [필수] 1단계에서 배포한 구글 Apps Script의 웹 앱 URL을 여기에 붙여넣으세요!
-        const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbxMtqg2LV7Hqfle1xm_wP7LsO0enOKpN9wLZcii0yXyz90gn93EUvG9ZAs3FYX7-q5l/exec";
+        // 🔗 구글 Apps Script 웹 앱 URL (연동 확인 완료)
+        const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbyIlr38Md5OdsGiRy6hnHDaogZ3d3HGMpi_pTmo8PPgsp4vP9MIOyrTk0SVm1jZwKc/exec";
 
         function App() {
             const [diaries, setDiaries] = useState([]);
@@ -31,7 +31,7 @@
             const [recipe, setRecipe] = useState(""); 
             const [selectedDiary, setSelectedDiary] = useState(null);
 
-            // ⚠️ 구글 시트에서 데이터 불러오기 (Read)
+            // 📥 구글 시트에서 데이터 불러오기 (Read)
             const fetchDiaries = async () => {
                 if (SHEET_API_URL.startsWith("YOUR_")) return;
                 setIsLoading(true);
@@ -41,6 +41,7 @@
                     setDiaries(data);
                 } catch (error) {
                     console.error("데이터 로딩 실패:", error);
+                    alert("데이터를 불러오는 중 오류가 발생했습니다: " + error.message);
                 } finally {
                     setIsLoading(false);
                 }
@@ -60,11 +61,10 @@
                 setIngredients(newIngredients);
             };
 
-            // ⚠️ 구글 시트에 새 일기 저장하기 (Create)
+            // 📤 구글 시트에 새 일기 저장하기 (Create)
             const handleSubmit = async (e) => {
                 e.preventDefault();
                 if (!breadType.trim()) return alert("빵 종류를 입력해주세요!");
-                if (SHEET_API_URL.startsWith("YOUR_")) return alert("구글 API URL을 먼저 설정해주세요!");
 
                 setIsLoading(true);
                 const newDiary = {
@@ -80,28 +80,29 @@
                 };
 
                 try {
-                    // 구글 앱스 스크립트로 POST 요청 전송
+                    // 구글 리다이렉트 보안 및 화면 튕김(no-cors 제거) 문제를 해결한 표준 전송 방식
                     await fetch(SHEET_API_URL, {
                         method: "POST",
-                        mode: "no-cors", // 구글 리다이렉트 우회를 위해 no-cors 설정
-                        headers: { "Content-Type": "application/json" },
+                        headers: { 
+                            "Content-Type": "text/plain;charset=utf-8" 
+                        },
                         body: JSON.stringify(newDiary)
                     });
 
-                    // 폼 초기화 및 새로고침
+                    // 입력 폼 초기화
                     setBreadType("");
                     setIngredients([{ name: "", amount: "" }]);
                     setRecipe(""); 
-                    alert("구글 스프레드시트에 일기가 저장되었습니다! 📝");
+                    alert("구글 스프레드시트에 일기가 안전하게 저장되었습니다! 📝");
                     
-                    // 약간의 시차를 두고 새로고침 유도 (구글 서버 반영 시간 고려)
+                    // 구글 서버에 행이 완전히 추가되는 시간을 고려해 1.2초 후 목록 갱신
                     setTimeout(() => {
                         fetchDiaries();
-                    }, 1000);
+                    }, 1200);
 
                 } catch (error) {
                     console.error("저장 실패:", error);
-                    alert("저장에 실패했습니다.");
+                    alert("저장 중 에러가 발생했습니다: " + error.message);
                 } finally {
                     setIsLoading(false);
                 }
@@ -109,15 +110,20 @@
 
             return (
                 <div className="min-h-screen">
+                    {/* 상단 헤더 */}
                     <header className="bg-amber-700 text-white text-center py-4 sticky top-0 shadow-md z-10">
                         <h1 className="text-xl font-bold tracking-wider">🍞 오늘의 제빵일기 (Google Sheets)</h1>
-                        {isLoading && <span className="text-xs bg-amber-900 px-2 py-0.5 rounded-full animate-pulse">동기화 중...</span>}
+                        {isLoading && (
+                            <div className="text-xs bg-amber-900/50 px-2 py-0.5 rounded-full inline-block mt-1 animate-pulse">
+                                구글 시트 동기화 중...
+                            </div>
+                        )}
                     </header>
 
                     <main className="max-w-md mx-auto p-4 space-y-6">
-                        {/* 1. 일기 작성 폼 */}
+                        {/* 1. 새 일기 작성 폼 */}
                         <section className="bg-white p-5 rounded-2xl shadow-sm border border-amber-100">
-                            <h2 className="text-lg font-bold mb-4">✍️ 새 일기 쓰기</h2>
+                            <h2 className="text-lg font-bold mb-4 flex items-center gap-1.5">✍️ 새 일기 쓰기</h2>
                             <form onSubmit={handleSubmit} className="space-y-4">
                                 <div>
                                     <label className="block text-sm font-semibold mb-1">빵 종류</label>
@@ -125,8 +131,8 @@
                                         type="text"
                                         value={breadType}
                                         onChange={(e) => setBreadType(e.target.value)}
-                                        placeholder="예: 소금빵, 식빵"
-                                        className="w-full px-3 py-2 border border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
+                                        placeholder="예: 소금빵, 식빵, 깜빠뉴"
+                                        className="w-full px-3 py-2 border border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
                                     />
                                 </div>
 
@@ -140,14 +146,14 @@
                                                     placeholder="재료 (예: 강력분)"
                                                     value={ingredient.name}
                                                     onChange={(e) => handleIngredientChange(index, "name", e.target.value)}
-                                                    className="w-1/2 px-3 py-2 border border-amber-200 rounded-xl text-sm"
+                                                    className="w-1/2 px-3 py-2 border border-amber-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                                                 />
                                                 <input
                                                     type="text"
                                                     placeholder="용량 (예: 250g)"
                                                     value={ingredient.amount}
                                                     onChange={(e) => handleIngredientChange(index, "amount", e.target.value)}
-                                                    className="w-1/2 px-3 py-2 border border-amber-200 rounded-xl text-sm"
+                                                    className="w-1/2 px-3 py-2 border border-amber-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                                                 />
                                             </div>
                                         ))}
@@ -155,7 +161,7 @@
                                     <button
                                         type="button"
                                         onClick={handleAddIngredient}
-                                        className="mt-2 text-xs font-semibold text-amber-700 bg-amber-100 px-3 py-1.5 rounded-lg"
+                                        className="mt-2 text-xs font-semibold text-amber-700 bg-amber-100 px-3 py-1.5 rounded-lg hover:bg-amber-200 transition"
                                     >
                                         + 재료 추가
                                     </button>
@@ -166,43 +172,46 @@
                                     <textarea
                                         value={recipe}
                                         onChange={(e) => setRecipe(e.target.value)}
-                                        placeholder="만드는 순서를 적어보세요."
+                                        placeholder="발효 시간, 오븐 온도 등 만드는 순서를 자유롭게 적어보세요."
                                         rows="4"
-                                        className="w-full px-3 py-2 border border-amber-200 rounded-xl text-sm resize-none"
+                                        className="w-full px-3 py-2 border border-amber-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-amber-500"
                                     ></textarea>
                                 </div>
 
                                 <button
                                     type="submit"
                                     disabled={isLoading}
-                                    className="w-full bg-amber-600 text-white font-bold py-3 rounded-xl shadow-md disabled:bg-amber-400"
+                                    className="w-full bg-amber-600 text-white font-bold py-3 rounded-xl shadow-md disabled:bg-amber-400 active:scale-[0.99] transition cursor-pointer"
                                 >
-                                    {isLoading ? "구글로 굽는 중..." : "기록하기"}
+                                    {isLoading ? "구글 시트에 굽는 중..." : "기록하기"}
                                 </button>
                             </form>
                         </section>
 
-                        {/* 2. 수동 새로고침 버튼 및 목록 */}
+                        {/* 2. 지난 기록 목록 */}
                         <section className="bg-white p-5 rounded-2xl shadow-sm border border-amber-100">
-                            <div className="flex justify-between items-center mb-3">
-                                <h2 className="text-lg font-bold">📜 지난 제빵 기록</h2>
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-lg font-bold">📜 지난 제빵 기록 목록</h2>
                                 <button 
                                     onClick={fetchDiaries} 
-                                    className="text-xs bg-amber-100 text-amber-800 px-2.5 py-1 rounded-lg font-semibold"
+                                    disabled={isLoading}
+                                    className="text-xs bg-amber-100 text-amber-800 px-2.5 py-1.5 rounded-lg font-semibold hover:bg-amber-200 active:scale-95 transition"
                                 >
-                                    🔄 동기화
+                                    🔄 새로고침
                                 </button>
                             </div>
                             {diaries.length === 0 ? (
-                                <p className="text-sm text-gray-400 text-center py-6">작성된 일기가 없거나 불러오는 중입니다.</p>
+                                <p className="text-sm text-amber-600/60 text-center py-6">작성된 일기가 없거나 데이터를 불러오는 중입니다.</p>
                             ) : (
                                 <div className="flex flex-wrap gap-2">
                                     {diaries.map((diary) => (
                                         <div 
                                             key={diary.id}
                                             onClick={() => setSelectedDiary(diary)}
-                                            className={`px-3 py-2 rounded-xl text-sm font-medium border cursor-pointer ${
-                                                selectedDiary?.id === diary.id ? "bg-amber-700 text-white" : "bg-amber-50 text-amber-800"
+                                            className={`px-3 py-2 rounded-xl text-sm font-medium border cursor-pointer transition shadow-2xs ${
+                                                selectedDiary?.id === diary.id 
+                                                    ? "bg-amber-700 text-white border-amber-700" 
+                                                    : "bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100"
                                             }`}
                                         >
                                             {diary.breadType}
@@ -212,29 +221,43 @@
                             )}
                         </section>
 
-                        {/* 3. 상세보기 */}
+                        {/* 3. 기록 상세보기 */}
                         {selectedDiary && (
-                            <section className="bg-amber-100/60 p-5 rounded-2xl border border-amber-200 space-y-4">
+                            <section className="bg-amber-100/70 p-5 rounded-2xl border border-amber-200 space-y-4 animate-fadeIn">
                                 <div className="flex justify-between items-start">
                                     <div>
-                                        <span className="text-xs text-amber-700">{selectedDiary.date}</span>
-                                        <h3 className="text-xl font-bold text-amber-900">{selectedDiary.breadType}</h3>
+                                        <span className="text-xs text-amber-700 font-medium">{selectedDiary.date}</span>
+                                        <h3 className="text-xl font-bold text-amber-900 mt-0.5">{selectedDiary.breadType}</h3>
                                     </div>
-                                    <button onClick={() => setSelectedDiary(null)} className="text-sm text-amber-700 font-bold">닫기</button>
+                                    <button 
+                                        onClick={() => setSelectedDiary(null)} 
+                                        className="text-sm text-amber-700 hover:text-amber-900 font-bold bg-white/50 px-2 py-1 rounded-md border border-amber-200 shadow-3xs"
+                                    >
+                                        닫기
+                                    </button>
                                 </div>
+
                                 <div>
-                                    <h4 className="text-xs font-bold text-amber-800 mb-1">재료</h4>
-                                    <ul className="bg-white rounded-xl p-3 text-sm space-y-1">
-                                        {selectedDiary.ingredients.map((ing, idx) => (
-                                            <li key={idx} className="flex justify-between">
-                                                <span>{ing.name}</span><strong>{ing.amount}</strong>
-                                            </li>
-                                        ))}
+                                    <h4 className="text-xs font-bold text-amber-800 mb-1.5">📝 계량 재료</h4>
+                                    <ul className="bg-white rounded-xl p-3 text-sm divide-y divide-amber-50 border border-amber-200/50">
+                                        {selectedDiary.ingredients && selectedDiary.ingredients.length > 0 ? (
+                                            selectedDiary.ingredients.map((ing, idx) => (
+                                                <li key={idx} className="flex justify-between py-1.5 first:pt-0 last:pb-0">
+                                                    <span className="text-amber-950 font-medium">{ing.name}</span>
+                                                    <span className="text-amber-700 font-semibold">{ing.amount}</span>
+                                                </li>
+                                            ))
+                                        ) : (
+                                            <li className="text-gray-400 text-xs py-1">기록된 재료가 없습니다.</li>
+                                        )}
                                     </ul>
                                 </div>
+
                                 <div>
-                                    <h4 className="text-xs font-bold text-amber-800 mb-1">레시피</h4>
-                                    <div className="bg-white rounded-xl p-3 text-sm whitespace-pre-wrap">{selectedDiary.recipe}</div>
+                                    <h4 className="text-xs font-bold text-amber-800 mb-1.5">🥖 레시피 과정</h4>
+                                    <div className="bg-white rounded-xl p-3 text-sm text-amber-950 whitespace-pre-wrap min-h-[4rem] border border-amber-200/50">
+                                        {selectedDiary.recipe ? selectedDiary.recipe : <span className="text-gray-400 text-xs">작성된 내용이 없습니다.</span>}
+                                    </div>
                                 </div>
                             </section>
                         )}
