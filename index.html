@@ -28,36 +28,66 @@
             
             const [breadType, setBreadType] = useState("");
             const [ingredients, setIngredients] = useState([{ name: "", amount: "" }]);
-            const [recipe, setRecipe] = useState(""); // [추가] 레시피 상태
+            const [recipe, setRecipe] = useState(""); 
             const [image, setImage] = useState(null);
             const [selectedDiary, setSelectedDiary] = useState(null);
 
+            // [추가] 수정 모드 및 수정 데이터 상태 관리
+            const [isEditing, setIsEditing] = useState(false);
+            const [editForm, setEditForm] = useState(null);
+
             const fileInputRef = useRef(null);
+            const editFileInputRef = useRef(null);
 
             // 일기 목록(diaries) 상태가 바뀔 때마다 로컬 스토리지에 자동으로 저장합니다.
             useEffect(() => {
                 localStorage.setItem("baking_diaries", JSON.stringify(diaries));
             }, [diaries]);
 
-            // 재료 입력 칸 추가
+            // 새 일기 작성용 재료 입력 칸 추가
             const handleAddIngredient = () => {
                 setIngredients([...ingredients, { name: "", amount: "" }]);
             };
 
-            // 재료 입력 값 변경
+            // 새 일기 작성용 재료 입력 값 변경
             const handleIngredientChange = (index, field, value) => {
                 const newIngredients = [...ingredients];
                 newIngredients[index][field] = value;
                 setIngredients(newIngredients);
             };
 
-            // 이미지 업로드 처리 (Base64 변환)
-            const handleImageChange = (e) => {
+            // [추가] 수정용 재료 입력 칸 추가
+            const handleEditAddIngredient = () => {
+                setEditForm({
+                    ...editForm,
+                    ingredients: [...editForm.ingredients, { name: "", amount: "" }]
+                });
+            };
+
+            // [추가] 수정용 재료 입력 값 변경
+            const handleEditIngredientChange = (index, field, value) => {
+                const newIngredients = [...editForm.ingredients];
+                newIngredients[index][field] = value;
+                setEditForm({ ...editForm, ingredients: newIngredients });
+            };
+
+            // [추가] 수정 중 특정 재료 행 삭제
+            const handleEditRemoveIngredient = (index) => {
+                const newIngredients = editForm.ingredients.filter((_, i) => i !== index);
+                setEditForm({ ...editForm, ingredients: newIngredients });
+            };
+
+            // 이미지 업로드 처리 (Base64 변환) - 공통 활용 가능하도록 변경 검토 후 분리 유지
+            const handleImageChange = (e, isEditMode = false) => {
                 const file = e.target.files[0];
                 if (file) {
                     const reader = new FileReader();
                     reader.onloadend = () => {
-                        setImage(reader.result);
+                        if (isEditMode) {
+                            setEditForm({ ...editForm, image: reader.result });
+                        } else {
+                            setImage(reader.result);
+                        }
                     };
                     reader.readAsDataURL(file);
                 }
@@ -77,7 +107,7 @@
                     }),
                     breadType,
                     ingredients: ingredients.filter((ing) => ing.name && ing.amount),
-                    recipe, // [추가] 데이터 객체에 레시피 추가
+                    recipe, 
                     image,
                 };
 
@@ -86,22 +116,69 @@
                 // 폼 초기화
                 setBreadType("");
                 setIngredients([{ name: "", amount: "" }]);
-                setRecipe(""); // [추가] 레시피 입력칸 초기화
+                setRecipe(""); 
                 setImage(null);
                 if (fileInputRef.current) fileInputRef.current.value = "";
                 alert("오늘의 제빵일기가 저장되었습니다! 🍞");
             };
 
+            // [추가] 수정 모드 진입 세팅
+            const startEditing = () => {
+                setEditForm({ ...selectedDiary });
+                setIsEditing(true);
+            };
+
+            // [추가] 수정 취소
+            const cancelEditing = () => {
+                setIsEditing(false);
+                setEditForm(null);
+            };
+
+            // [추가] 수정 완료 처리
+            const handleUpdateSubmit = (e) => {
+                e.preventDefault();
+                if (!editForm.breadType.trim()) return alert("빵 종류를 입력해주세요!");
+
+                const updatedDiaries = diaries.map((diary) => {
+                    if (diary.id === editForm.id) {
+                        return {
+                            ...editForm,
+                            ingredients: editForm.ingredients.filter((ing) => ing.name && ing.amount)
+                        };
+                    }
+                    return diary;
+                });
+
+                setDiaries(updatedDiaries);
+                
+                // 상세 보기 창 데이터도 업데이트된 내용으로 동기화
+                const updatedDiary = updatedDiaries.find(d => d.id === editForm.id);
+                setSelectedDiary(updatedDiary);
+                
+                setIsEditing(false);
+                setEditForm(null);
+                alert("제빵 기록이 수정되었습니다! ✨");
+            };
+
             // 일기 삭제 기능
             const handleDeleteDiary = (id, e) => {
-                e.stopPropagation(); // 버튼 클릭 시 상세보기 격발 방지
+                e.stopPropagation(); 
                 if (confirm("정말 이 일기를 삭제하시겠습니까?")) {
                     const filtered = diaries.filter(diary => diary.id !== id);
                     setDiaries(filtered);
                     if (selectedDiary?.id === id) {
                         setSelectedDiary(null);
+                        setIsEditing(false);
+                        setEditForm(null);
                     }
                 }
+            };
+
+            // 목록 클릭 시 상세 보기 열기 로직 보완
+            const handleSelectDiary = (diary) => {
+                setSelectedDiary(diary);
+                setIsEditing(false); // 다른 일기를 누르면 수정 모드 꺼지도록 리셋
+                setEditForm(null);
             };
 
             return (
@@ -162,7 +239,7 @@
                                     </button>
                                 </div>
 
-                                {/* [추가] 레시피 입력 칸 */}
+                                {/* 레시피 입력 칸 */}
                                 <div>
                                     <label className="block text-sm font-semibold mb-1">레시피 노트</label>
                                     <textarea
@@ -181,7 +258,7 @@
                                         type="file"
                                         accept="image/*"
                                         ref={fileInputRef}
-                                        onChange={handleImageChange}
+                                        onChange={(e) => handleImageChange(e, false)}
                                         className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100"
                                     />
                                     {image && (
@@ -211,7 +288,7 @@
                                     {diaries.map((diary) => (
                                         <div 
                                             key={diary.id}
-                                            onClick={() => setSelectedDiary(diary)}
+                                            onClick={() => handleSelectDiary(diary)}
                                             className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium border cursor-pointer transition ${
                                                 selectedDiary?.id === diary.id
                                                     ? "bg-amber-700 text-white border-amber-700 shadow-sm"
@@ -233,51 +310,171 @@
                             )}
                         </section>
 
-                        {/* 3. 선택한 기록 상세 보기 */}
+                        {/* 3. 선택한 기록 상세 보기 또는 수정하기 */}
                         {selectedDiary && (
-                            <section className="bg-amber-100/60 p-5 rounded-2xl border border-amber-200 space-y-4">
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <span className="text-xs text-amber-700 font-semibold">{selectedDiary.date}</span>
-                                        <h3 className="text-xl font-bold text-amber-900 mt-0.5">{selectedDiary.breadType}</h3>
-                                    </div>
-                                    <button 
-                                        onClick={() => setSelectedDiary(null)}
-                                        className="text-sm text-amber-600 hover:text-amber-800 font-bold"
-                                    >
-                                        닫기
-                                    </button>
-                                </div>
+                            <section className="bg-amber-100/60 p-5 rounded-2xl border border-amber-200">
+                                
+                                {/* [분기] 3-A. 일반 상세 보기 모드 */}
+                                {!isEditing ? (
+                                    <div className="space-y-4">
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <span className="text-xs text-amber-700 font-semibold">{selectedDiary.date}</span>
+                                                <h3 className="text-xl font-bold text-amber-900 mt-0.5">{selectedDiary.breadType}</h3>
+                                            </div>
+                                            <div className="flex gap-3 text-sm font-bold">
+                                                <button 
+                                                    onClick={startEditing}
+                                                    className="text-amber-700 hover:text-amber-900 bg-white/60 px-2.5 py-1 rounded-lg border border-amber-200 shadow-xs"
+                                                >
+                                                    수정하기
+                                                </button>
+                                                <button 
+                                                    onClick={() => setSelectedDiary(null)}
+                                                    className="text-amber-600 hover:text-amber-800 self-center"
+                                                >
+                                                    닫기
+                                                </button>
+                                            </div>
+                                        </div>
 
-                                {selectedDiary.image && (
-                                    <div className="rounded-xl overflow-hidden h-48 border border-amber-200 bg-white">
-                                        <img src={selectedDiary.image} alt={selectedDiary.breadType} className="w-full h-full object-cover" />
-                                    </div>
-                                )}
-
-                                <div>
-                                    <h4 className="text-sm font-bold text-amber-800 mb-1.5">레시피 재료</h4>
-                                    <ul className="bg-white rounded-xl p-3 border border-amber-200/60 divide-y divide-amber-100">
-                                        {selectedDiary.ingredients.length === 0 ? (
-                                            <li className="text-sm text-gray-400 py-1">입력된 재료가 없습니다.</li>
-                                        ) : (
-                                            selectedDiary.ingredients.map((ing, idx) => (
-                                                <li key={idx} className="flex justify-between text-sm py-2 first:pt-0 last:pb-0">
-                                                    <span className="font-medium text-amber-950">{ing.name}</span>
-                                                    <span className="text-amber-700 font-semibold">{ing.amount}</span>
-                                                </li>
-                                            ))
+                                        {selectedDiary.image && (
+                                            <div className="rounded-xl overflow-hidden h-48 border border-amber-200 bg-white">
+                                                <img src={selectedDiary.image} alt={selectedDiary.breadType} className="w-full h-full object-cover" />
+                                            </div>
                                         )}
-                                    </ul>
-                                </div>
 
-                                {/* [추가] 상세 보기 화면에 레시피 내용 노출 */}
-                                <div>
-                                    <h4 className="text-sm font-bold text-amber-800 mb-1.5">레시피 노트</h4>
-                                    <div className="bg-white rounded-xl p-3 border border-amber-200/60 text-sm text-amber-950 whitespace-pre-wrap min-h-[4rem]">
-                                        {selectedDiary.recipe ? selectedDiary.recipe : <span className="text-gray-400">작성된 레시피 내용이 없습니다.</span>}
+                                        <div>
+                                            <h4 className="text-sm font-bold text-amber-800 mb-1.5">레시피 재료</h4>
+                                            <ul className="bg-white rounded-xl p-3 border border-amber-200/60 divide-y divide-amber-100">
+                                                {selectedDiary.ingredients.length === 0 ? (
+                                                    <li className="text-sm text-gray-400 py-1">입력된 재료가 없습니다.</li>
+                                                ) : (
+                                                    selectedDiary.ingredients.map((ing, idx) => (
+                                                        <li key={idx} className="flex justify-between text-sm py-2 first:pt-0 last:pb-0">
+                                                            <span className="font-medium text-amber-950">{ing.name}</span>
+                                                            <span className="text-amber-700 font-semibold">{ing.amount}</span>
+                                                        </li>
+                                                    ))
+                                                )}
+                                            </ul>
+                                        </div>
+
+                                        <div>
+                                            <h4 className="text-sm font-bold text-amber-800 mb-1.5">레시피 노트</h4>
+                                            <div className="bg-white rounded-xl p-3 border border-amber-200/60 text-sm text-amber-950 whitespace-pre-wrap min-h-[4rem]">
+                                                {selectedDiary.recipe ? selectedDiary.recipe : <span className="text-gray-400">작성된 레시피 내용이 없습니다.</span>}
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
+                                ) : (
+                                    /* [분기] 3-B. 수정(편집)하기 모드 */
+                                    <form onSubmit={handleUpdateSubmit} className="space-y-4">
+                                        <div className="flex justify-between items-center">
+                                            <h3 className="text-base font-bold text-amber-900">✏️ 기록 수정 중...</h3>
+                                            <button 
+                                                type="button"
+                                                onClick={cancelEditing}
+                                                className="text-sm font-semibold text-gray-500 hover:text-gray-700"
+                                            >
+                                                취소
+                                            </button>
+                                        </div>
+
+                                        {/* 빵 종류 수정 */}
+                                        <div>
+                                            <label className="block text-xs font-semibold mb-1 text-amber-800">빵 종류</label>
+                                            <input
+                                                type="text"
+                                                value={editForm.breadType}
+                                                onChange={(e) => setEditForm({ ...editForm, breadType: e.target.value })}
+                                                className="w-full px-3 py-1.5 bg-white border border-amber-200 rounded-xl focus:outline-none text-sm font-medium"
+                                            />
+                                        </div>
+
+                                        {/* 재료 수정 */}
+                                        <div>
+                                            <label className="block text-xs font-semibold mb-1 text-amber-800">재료 및 용량</label>
+                                            <div className="space-y-1.5">
+                                                {editForm.ingredients.map((ingredient, index) => (
+                                                    <div key={index} className="flex gap-2 items-center">
+                                                        <input
+                                                            type="text"
+                                                            value={ingredient.name}
+                                                            placeholder="재료명"
+                                                            onChange={(e) => handleEditIngredientChange(index, "name", e.target.value)}
+                                                            className="w-5/12 px-2 py-1.5 bg-white border border-amber-200 rounded-xl text-xs"
+                                                        />
+                                                        <input
+                                                            type="text"
+                                                            value={ingredient.amount}
+                                                            placeholder="용량"
+                                                            onChange={(e) => handleEditIngredientChange(index, "amount", e.target.value)}
+                                                            className="w-5/12 px-2 py-1.5 bg-white border border-amber-200 rounded-xl text-xs"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleEditRemoveIngredient(index)}
+                                                            className="w-2/12 text-gray-400 hover:text-red-500 font-bold text-sm"
+                                                        >
+                                                            ✕
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={handleEditAddIngredient}
+                                                className="mt-1.5 text-xs bg-white text-amber-800 border border-amber-200 px-2 py-1 rounded-md hover:bg-amber-100"
+                                            >
+                                                + 항목 추가
+                                            </button>
+                                        </div>
+
+                                        {/* 레시피 노트 수정 */}
+                                        <div>
+                                            <label className="block text-xs font-semibold mb-1 text-amber-800">레시피 노트</label>
+                                            <textarea
+                                                value={editForm.recipe}
+                                                onChange={(e) => setEditForm({ ...editForm, recipe: e.target.value })}
+                                                rows="4"
+                                                className="w-full px-3 py-2 bg-white border border-amber-200 rounded-xl focus:outline-none text-xs resize-none"
+                                            ></textarea>
+                                        </div>
+
+                                        {/* 이미지 수정 및 교체 */}
+                                        <div>
+                                            <label className="block text-xs font-semibold mb-1 text-amber-800">사진 교체</label>
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                ref={editFileInputRef}
+                                                onChange={(e) => handleImageChange(e, true)}
+                                                className="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded-full file:border-0 file:bg-white file:text-amber-800 hover:file:bg-amber-100"
+                                            />
+                                            {editForm.image && (
+                                                <div className="mt-2 relative rounded-xl overflow-hidden h-28 border border-amber-200 bg-white">
+                                                    <img src={editForm.image} alt="수정 본 미리보기" className="w-full h-full object-cover" />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setEditForm({ ...editForm, image: null })}
+                                                        className="absolute top-1 right-1 bg-black/60 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                                                    >
+                                                        ✕
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* 수정 완료 확인 버튼 */}
+                                        <button
+                                            type="submit"
+                                            className="w-full bg-amber-700 text-white font-bold py-2.5 rounded-xl text-sm shadow-sm hover:bg-amber-800"
+                                        >
+                                            수정 완료 ✨
+                                        </button>
+                                    </form>
+                                )}
                             </section>
                         )}
                     </main>
